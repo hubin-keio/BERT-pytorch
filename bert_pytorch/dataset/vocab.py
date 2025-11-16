@@ -99,11 +99,13 @@ class Vocab(TorchVocab):
         super().__init__(counter, specials=["<pad>", "<unk>", "<eos>", "<sos>", "<mask>"],
                          max_size=max_size, min_freq=min_freq)
 
-    def to_seq(self, sentece, seq_len, with_eos=False, with_sos=False) -> list:
-        pass
+    def to_seq(self, sentence, seq_len=None, with_eos=False, with_sos=False, with_len=False):
+        """Convert sentence to sequence of token indices"""
+        raise NotImplementedError("to_seq must be implemented by subclass")
 
     def from_seq(self, seq, join=False, with_pad=False):
-        pass
+        """Convert sequence of token indices back to sentence"""
+        raise NotImplementedError("from_seq must be implemented by subclass")
 
     @staticmethod
     def load_vocab(vocab_path: str) -> 'Vocab':

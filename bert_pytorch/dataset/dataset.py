@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import tqdm
 import torch
 import random
+import atexit
 
 
 class BERTDataset(Dataset):
@@ -16,6 +17,7 @@ class BERTDataset(Dataset):
 
         with open(corpus_path, "r", encoding=encoding) as f:
             if self.corpus_lines is None and not on_memory:
+                self.corpus_lines = 0
                 for _ in tqdm.tqdm(f, desc="Loading Dataset", total=corpus_lines):
                     self.corpus_lines += 1
 
@@ -30,6 +32,29 @@ class BERTDataset(Dataset):
 
             for _ in range(random.randint(self.corpus_lines if self.corpus_lines < 1000 else 1000)):
                 self.random_file.__next__()
+
+            # Register cleanup at exit
+            atexit.register(self._cleanup)
+        else:
+            self.file = None
+            self.random_file = None
+
+    def _cleanup(self):
+        """Close file handles to prevent resource leaks"""
+        if hasattr(self, 'file') and self.file is not None:
+            try:
+                self.file.close()
+            except Exception:
+                pass
+        if hasattr(self, 'random_file') and self.random_file is not None:
+            try:
+                self.random_file.close()
+            except Exception:
+                pass
+
+    def __del__(self):
+        """Destructor to ensure cleanup"""
+        self._cleanup()
 
     def __len__(self):
         return self.corpus_lines
@@ -102,8 +127,9 @@ class BERTDataset(Dataset):
         if self.on_memory:
             return self.lines[item][0], self.lines[item][1]
         else:
-            line = self.file.__next__()
-            if line is None:
+            try:
+                line = self.file.__next__()
+            except StopIteration:
                 self.file.close()
                 self.file = open(self.corpus_path, "r", encoding=self.encoding)
                 line = self.file.__next__()
@@ -115,10 +141,11 @@ class BERTDataset(Dataset):
         if self.on_memory:
             return self.lines[random.randrange(len(self.lines))][1]
 
-        line = self.file.__next__()
-        if line is None:
-            self.file.close()
-            self.file = open(self.corpus_path, "r", encoding=self.encoding)
+        try:
+            line = self.random_file.__next__()
+        except StopIteration:
+            self.random_file.close()
+            self.random_file = open(self.corpus_path, "r", encoding=self.encoding)
             for _ in range(random.randint(self.corpus_lines if self.corpus_lines < 1000 else 1000)):
                 self.random_file.__next__()
             line = self.random_file.__next__()

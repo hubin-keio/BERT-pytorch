@@ -7,6 +7,18 @@ from .trainer import BERTTrainer
 from .dataset import BERTDataset, WordVocab
 
 
+def str_to_bool(v):
+    """Convert string to boolean value"""
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def train():
     parser = argparse.ArgumentParser()
 
@@ -24,11 +36,11 @@ def train():
     parser.add_argument("-e", "--epochs", type=int, default=10, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
-    parser.add_argument("--with_cuda", type=bool, default=True, help="training with CUDA: true, or false")
+    parser.add_argument("--with_cuda", type=str_to_bool, default=True, help="training with CUDA: true, or false")
     parser.add_argument("--log_freq", type=int, default=10, help="printing loss every n iter: setting n")
     parser.add_argument("--corpus_lines", type=int, default=None, help="total number of lines in corpus")
     parser.add_argument("--cuda_devices", type=int, nargs='+', default=None, help="CUDA device ids")
-    parser.add_argument("--on_memory", type=bool, default=True, help="Loading on memory: true or false")
+    parser.add_argument("--on_memory", type=str_to_bool, default=True, help="Loading on memory: true or false")
 
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate of adam")
     parser.add_argument("--adam_weight_decay", type=float, default=0.01, help="weight_decay of adam")
