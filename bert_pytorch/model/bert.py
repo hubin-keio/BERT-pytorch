@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from .transformer import TransformerBlock
@@ -9,16 +10,33 @@ class BERT(nn.Module):
     BERT model : Bidirectional Encoder Representations from Transformers.
     """
 
-    def __init__(self, vocab_size, hidden=768, n_layers=12, attn_heads=12, dropout=0.1):
+    def __init__(self, vocab_size: int, hidden: int = 768, n_layers: int = 12,
+                 attn_heads: int = 12, dropout: float = 0.1) -> None:
         """
-        :param vocab_size: vocab_size of total words
-        :param hidden: BERT model hidden size
-        :param n_layers: numbers of Transformer blocks(layers)
+        Initialize BERT model.
+
+        :param vocab_size: total vocabulary size
+        :param hidden: hidden size of transformer model
+        :param n_layers: number of transformer blocks (layers)
         :param attn_heads: number of attention heads
         :param dropout: dropout rate
+        :raises ValueError: if hidden is not divisible by attn_heads
         """
 
         super().__init__()
+
+        # Validate parameters
+        if hidden % attn_heads != 0:
+            raise ValueError(f"hidden size ({hidden}) must be divisible by attn_heads ({attn_heads})")
+        if dropout < 0 or dropout > 1:
+            raise ValueError(f"dropout must be between 0 and 1, got {dropout}")
+        if vocab_size <= 0:
+            raise ValueError(f"vocab_size must be positive, got {vocab_size}")
+        if n_layers <= 0:
+            raise ValueError(f"n_layers must be positive, got {n_layers}")
+        if attn_heads <= 0:
+            raise ValueError(f"attn_heads must be positive, got {attn_heads}")
+
         self.hidden = hidden
         self.n_layers = n_layers
         self.attn_heads = attn_heads
@@ -33,10 +51,14 @@ class BERT(nn.Module):
         self.transformer_blocks = nn.ModuleList(
             [TransformerBlock(hidden, attn_heads, hidden * 4, dropout) for _ in range(n_layers)])
 
-    def forward(self, x, segment_info):
-        # attention masking for padded token
-        # torch.ByteTensor([batch_size, 1, 1, seq_len])
-        # Broadcasts correctly to [batch_size, num_heads, seq_len, seq_len]
+    def forward(self, x: torch.Tensor, segment_info: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of BERT model.
+
+        :param x: input token indices, shape [batch_size, seq_len]
+        :param segment_info: segment labels, shape [batch_size, seq_len]
+        :return: contextual representations, shape [batch_size, seq_len, hidden]
+        """
         mask = (x > 0).unsqueeze(1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
