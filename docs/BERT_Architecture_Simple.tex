@@ -1,5 +1,5 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
+% Simplified version - maximum compatibility
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -8,7 +8,6 @@
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{float}
-\usepackage{tikz}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{setspace}
@@ -99,7 +98,7 @@ PE_{(\text{pos}, 2i+1)} = \cos\left(\frac{\text{pos}}{10000^{2i/d_{\text{model}}
 
 where $i \in \{0, 1, \ldots, \lfloor d_{\text{model}}/2 \rfloor - 1\}$.
 
-\subsubsection{Intuition and Mathematical Properties}
+\subsubsection{Why Sinusoidal Positional Encoding?}
 
 The sinusoidal positional encoding was chosen for several important reasons:
 
@@ -140,23 +139,6 @@ PE_{(\text{pos}+\Delta)} = \mathbf{M}(\Delta) \cdot PE_{(\text{pos})}
 \end{equation}
 
 where $\mathbf{M}(\Delta)$ is a rotation matrix that depends only on the distance $\Delta$. This enables the model to learn relative position biases efficiently.
-
-\subsubsection{Comparison with Alternatives}
-
-\textbf{Why not learnable embeddings?}
-\begin{itemize}
-    \item Cannot extrapolate to longer sequences
-    \item Requires position-specific parameters
-    \item Less interpretable for relative positions
-\end{itemize}
-
-\textbf{Why sinusoidal over other periodic functions?}
-\begin{itemize}
-    \item Smooth and differentiable
-    \item Natural frequency spectrum representation
-    \item Efficient computation (no lookup tables needed)
-    \item Well-suited for attention mechanisms
-\end{itemize}
 
 \subsection{Segment Embedding}
 
@@ -238,33 +220,6 @@ The outputs are concatenated and projected:
 
 where $\mathbf{W}^O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$.
 
-\subsubsection{Advantages of Multi-Head Attention}
-
-\begin{enumerate}
-    \item \textbf{Multiple Representation Subspaces}: Different heads learn to attend to different subsets of features
-    \item \textbf{Reduced Dimensionality per Head}: $d_k = d_{\text{model}}/h$ allows cheaper computation
-    \item \textbf{Diverse Context}: Heads can capture different types of relationships (e.g., adjacent positions, long-range dependencies, semantic relationships)
-\end{enumerate}
-
-\subsection{Attention Masking for Padding}
-
-To prevent the model from attending to padding tokens, we apply an attention mask:
-
-\begin{equation}
-\text{Attention}_{\text{masked}}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^T}{\sqrt{d_k}} + \mathbf{M}\right)\mathbf{V}
-\end{equation}
-
-where the mask $\mathbf{M}$ is defined as:
-
-\begin{equation}
-\mathbf{M}_{ij} = \begin{cases}
-0 & \text{if position } j \text{ is valid} \\
--\infty & \text{if position } j \text{ is padding}
-\end{cases}
-\end{equation}
-
-The $-\infty$ values ensure that attention weights for padding positions become zero after softmax.
-
 \section{Transformer Block}
 
 \subsection{Architecture}
@@ -324,16 +279,6 @@ where:
     \item $\epsilon = 10^{-6}$ is a small constant for numerical stability
 \end{itemize}
 
-\subsection{Residual Connections}
-
-Residual connections enable deeper networks by allowing gradients to flow directly:
-
-\begin{equation}
-\mathbf{y} = \mathbf{x} + \text{Sublayer}(\mathbf{x})
-\end{equation}
-
-This formulation allows information from layer $l$ to skip to layer $l+1$, facilitating training of very deep models.
-
 \section{Pre-training Tasks}
 
 \subsection{Masked Language Model (MLM)}
@@ -344,9 +289,7 @@ The MLM task trains the model to predict masked tokens based on surrounding cont
 \mathcal{L}_{\text{MLM}} = -\sum_{t \in M} \log P(x_t | \mathbf{x}_{\setminus t})
 \end{equation}
 
-where $M$ is the set of masked token positions and $P(x_t | \mathbf{x}_{\setminus t})$ is the probability of the original token given the context.
-
-\subsubsection{Masking Strategy}
+where $M$ is the set of masked token positions.
 
 For each sequence, 15\% of tokens are randomly selected for masking:
 \begin{itemize}
@@ -355,27 +298,9 @@ For each sequence, 15\% of tokens are randomly selected for masking:
     \item 10\% of the time: kept unchanged
 \end{itemize}
 
-This mixed strategy prevents the model from simply learning to recognize the [MASK] token.
-
-\subsubsection{MLM Loss}
-
-The MLM head applies a linear projection followed by softmax:
-
-\begin{equation}
-P(x_t | \mathbf{h}_t) = \text{softmax}(\mathbf{W}_{\text{mlm}}\mathbf{h}_t + \mathbf{b}_{\text{mlm}})
-\end{equation}
-
-where $\mathbf{h}_t$ is the hidden representation at position $t$ and $\mathbf{W}_{\text{mlm}} \in \mathbb{R}^{|V| \times d_{\text{model}}}$.
-
-The loss is computed using negative log-likelihood:
-
-\begin{equation}
-\mathcal{L}_{\text{MLM}} = -\sum_{t \in M} \log P(x_t^{\text{true}} | \mathbf{h}_t)
-\end{equation}
-
 \subsection{Next Sentence Prediction (NSP)}
 
-The NSP task trains the model to determine if two sentences are consecutive in the corpus:
+The NSP task trains the model to determine if two sentences are consecutive:
 
 \begin{equation}
 \mathcal{L}_{\text{NSP}} = -\log P(\text{IsNext} | \mathbf{h}_0)
@@ -383,19 +308,7 @@ The NSP task trains the model to determine if two sentences are consecutive in t
 
 where $\mathbf{h}_0$ is the hidden representation of the [CLS] token.
 
-\subsubsection{NSP Head}
-
-The NSP head applies a linear layer to the [CLS] token representation:
-
-\begin{equation}
-P(\text{IsNext} | \mathbf{h}_0) = \text{softmax}(\mathbf{W}_{\text{nsp}}\mathbf{h}_0 + \mathbf{b}_{\text{nsp}})
-\end{equation}
-
-where $\mathbf{W}_{\text{nsp}} \in \mathbb{R}^{2 \times d_{\text{model}}}$ projects to a 2-dimensional logit space (binary classification).
-
-\subsubsection{Training Data Construction}
-
-For each input sequence, the model receives:
+For each input sequence:
 \begin{itemize}
     \item 50\% of the time: two consecutive sentences (label = 1)
     \item 50\% of the time: two random sentences (label = 0)
@@ -409,38 +322,7 @@ The total pre-training loss combines both tasks:
 \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MLM}} + \mathcal{L}_{\text{NSP}}
 \end{equation}
 
-Both losses contribute equally to the overall objective during training.
-
-\section{Computational Complexity}
-
-\subsection{Complexity Analysis}
-
-The computational complexity of BERT is dominated by the attention mechanism:
-
-\begin{equation}
-O(\text{Complexity}) = O(L \cdot n \cdot (d_{\text{model}}^2 + n \cdot d_{\text{model}}))
-\end{equation}
-
-where:
-\begin{itemize}
-    \item $L$ is the number of transformer blocks
-    \item $n$ is the sequence length
-    \item $d_{\text{model}}$ is the hidden dimension
-\end{itemize}
-
-The quadratic term $O(n \cdot d_{\text{model}})$ arises from the attention mechanism's pairwise interactions.
-
-\subsection{Memory Requirements}
-
-Memory complexity during training is:
-
-\begin{equation}
-O(\text{Memory}) = O(L \cdot n \cdot d_{\text{model}} + n^2)
-\end{equation}
-
-The $O(n^2)$ term comes from storing attention weight matrices for all sequence positions.
-
-\section{Implementation Details in BERT-pytorch}
+\section{Implementation Details}
 
 \subsection{Key Hyperparameters}
 
@@ -450,194 +332,19 @@ The $O(n^2)$ term comes from storing attention weight matrices for all sequence 
 \hline
 \textbf{Parameter} & \textbf{Protein Default} & \textbf{BERT-Base} \\
 \hline
-Hidden Size ($d_{\text{model}}$) & 256 & 768 \\
-Number of Layers ($L$) & 8 & 12 \\
-Number of Attention Heads ($h$) & 8 & 12 \\
-Feed-Forward Dimension ($d_{\text{ff}}$) & 1024 & 3072 \\
+Hidden Size & 256 & 768 \\
+Number of Layers & 8 & 12 \\
+Number of Attention Heads & 8 & 12 \\
+Feed-Forward Dimension & 1024 & 3072 \\
 Dropout Rate & 0.1 & 0.1 \\
 Max Sequence Length & 512 & 512 \\
-Vocabulary Size & 26 (amino acids) & 30,522 (tokens) \\
+Vocabulary Size & 26 & 30,522 \\
 \hline
 \end{tabular}
 \end{table}
-
-\subsection{Positional Encoding Implementation}
-
-In the BERT-pytorch implementation, positional encodings are computed as:
-
-\begin{lstlisting}
-# Compute positional encodings
-max_len = 2048
-d_model = 256
-pe = torch.zeros(max_len, d_model)
-position = torch.arange(0, max_len).unsqueeze(1).float()
-div_term = torch.exp(
-    torch.arange(0, d_model, 2).float() *
-    -(math.log(10000.0) / d_model)
-)
-pe[:, 0::2] = torch.sin(position * div_term)
-pe[:, 1::2] = torch.cos(position * div_term)
-\end{lstlisting}
-
-\subsection{Forward Pass}
-
-The complete forward pass through BERT is:
-
-\begin{lstlisting}
-def forward(self, x, segment_info):
-    # Create attention mask for padded tokens
-    mask = (x > 0).unsqueeze(1).unsqueeze(1)
-
-    # Embedding layer
-    x = self.embedding(x, segment_info)
-
-    # Transformer blocks
-    for transformer in self.transformer_blocks:
-        x = transformer.forward(x, mask)
-
-    return x
-\end{lstlisting}
-
-\section{Mathematical Properties and Advantages}
-
-\subsection{Why Sinusoidal Positional Encoding?}
-
-\subsubsection{Property 1: Distance Sensitivity}
-
-The distance between two positions $i$ and $j$ can be computed as:
-
-\begin{equation}
-d(i,j) = ||PE_i - PE_j||_2^2
-\end{equation}
-
-This distance is symmetric and depends only on $|i - j|$, allowing the model to learn position-relative patterns.
-
-\subsubsection{Property 2: Sequence Length Extrapolation}
-
-Unlike learnable embeddings, sinusoidal encodings extend naturally to arbitrary sequence lengths:
-
-\begin{equation}
-\lim_{\text{pos} \to \infty} PE_{\text{pos}} = \text{periodic with bounded magnitude}
-\end{equation}
-
-\subsubsection{Property 3: Differentiability}
-
-Both sine and cosine are infinitely differentiable, enabling smooth gradient flow during training:
-
-\begin{equation}
-\frac{\partial PE_{(\text{pos}, 2i)}}{\partial \text{pos}} = \frac{2i}{10000^{2i/d_{\text{model}}}} \cos\left(\frac{\text{pos}}{10000^{2i/d_{\text{model}}}}\right)
-\end{equation}
-
-\subsection{Bidirectionality Advantage}
-
-Unlike RNNs or autoregressive models, BERT processes the entire sequence bidirectionally:
-
-\begin{equation}
-\mathbf{h}_t^{(l)} = f(\mathbf{x}_1, \ldots, \mathbf{x}_n) \text{ for all } t
-\end{equation}
-
-This means the representation of each token depends on both left and right context, enabling richer contextual understanding.
-
-\section{Performance Considerations}
-
-\subsection{Numerical Stability}
-
-To prevent gradient explosion/vanishing, we normalize attention scores:
-
-\begin{equation}
-\text{stable\_softmax}(\mathbf{z}) = \frac{\exp(\mathbf{z} - \max(\mathbf{z}))}{\sum \exp(\mathbf{z} - \max(\mathbf{z}))}
-\end{equation}
-
-Scaling by $\frac{1}{\sqrt{d_k}}$ ensures attention logits have appropriate variance.
-
-\subsection{Gradient Flow}
-
-Residual connections preserve gradient signal through deep networks:
-
-\begin{equation}
-\frac{\partial \mathcal{L}}{\partial \mathbf{x}^{(l)}} = \frac{\partial \mathcal{L}}{\partial \mathbf{x}^{(l+1)}} \left(\mathbf{I} + \frac{\partial \text{Sublayer}}{\partial \mathbf{x}^{(l)}}\right)
-\end{equation}
-
-The identity matrix term ensures gradients can flow directly through residual paths.
-
-\section{Applications to Protein Sequences}
-
-BERT-pytorch extends naturally to protein sequences with minimal modifications:
-
-\begin{itemize}
-    \item \textbf{Vocabulary}: 26 amino acids instead of text tokens
-    \item \textbf{Sequence Length}: Proteins up to 2048 residues (vs. 512 for text)
-    \item \textbf{MLM Task}: Predict masked amino acids from flanking context
-    \item \textbf{NSP Task}: Predict if two protein fragments are from the same region
-\end{itemize}
-
-The same mathematical framework applies seamlessly to protein language modeling.
 
 \section{Conclusion}
 
-The BERT architecture combines several elegant mathematical principles:
-
-\begin{enumerate}
-    \item \textbf{Sinusoidal positional encoding} provides position information without learnable parameters, enabling extrapolation and capturing relative distances
-    \item \textbf{Multi-head attention} allows the model to attend to multiple representation subspaces simultaneously
-    \item \textbf{Residual connections} facilitate training of deep networks
-    \item \textbf{Bidirectional processing} captures rich contextual information
-    \item \textbf{Joint pre-training objectives} (MLM + NSP) enable unsupervised learning of robust representations
-\end{enumerate}
-
-These design choices make BERT effective for both natural language and protein sequence modeling, achieving state-of-the-art results across diverse tasks.
-
-\section*{References}
-
-\begin{thebibliography}{9}
-
-\bibitem{devlin2018bert}
-Devlin, J., Chang, M. W., Lee, K., \& Toutanova, K. (2018).
-\textit{BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}.
-arXiv preprint arXiv:1810.04805.
-
-\bibitem{vaswani2017attention}
-Vaswani, A., Shazeer, N., Parmar, N., et al. (2017).
-\textit{Attention Is All You Need}.
-In Advances in Neural Information Processing Systems (pp. 5998-6008).
-
-\bibitem{hendrycks2016gelu}
-Hendrycks, D., \& Gimpel, K. (2016).
-\textit{Gaussian Error Linear Units (GELUs)}.
-arXiv preprint arXiv:1606.08415.
-
-\bibitem{ba2016layer}
-Ba, J. L., Kiros, J. R., \& Hinton, G. E. (2016).
-\textit{Layer Normalization}.
-arXiv preprint arXiv:1607.06450.
-
-\end{thebibliography}
-
-\appendix
-
-\section{Mathematical Notation Reference}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{|l|l|}
-\hline
-\textbf{Symbol} & \textbf{Meaning} \\
-\hline
-$d_{\text{model}}$ & Model hidden dimension \\
-$d_k, d_v$ & Key and value dimensions per attention head \\
-$d_{\text{ff}}$ & Feed-forward intermediate dimension \\
-$h$ & Number of attention heads \\
-$L$ & Number of transformer blocks \\
-$n, m$ & Query/Key/Value sequence lengths \\
-$|V|$ & Vocabulary size \\
-$\mathbf{Q}, \mathbf{K}, \mathbf{V}$ & Query, Key, Value matrices \\
-$\mathbf{W}$ & Learnable weight matrix \\
-$\mathbf{M}$ & Attention mask \\
-$PE$ & Positional encoding \\
-$\sigma$ & Activation function (GELU) \\
-$\mathcal{L}$ & Loss function \\
-\hline
-\end{tabular}
-\end{table}
+The BERT architecture combines several elegant mathematical principles for effective language modeling that transfer naturally to protein sequence analysis.
 
 \end{document}

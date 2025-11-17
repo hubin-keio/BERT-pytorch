@@ -4,6 +4,15 @@ This directory contains comprehensive documentation for the BERT-pytorch protein
 
 ## Files
 
+### 0. LATEX_TROUBLESHOOTING.md
+
+**If you encounter LaTeX compilation errors, read this first!**
+- Solutions for UTF-8 encoding errors
+- Multiple compilation options
+- How to use the simplified LaTeX file
+- Overleaf online option
+- Markdown alternative (no compilation)
+
 ### 1. BERT_ARCHITECTURE.md
 
 Complete mathematical description of the BERT model architecture with detailed explanations of:
@@ -37,17 +46,21 @@ Complete LaTeX source document that can be compiled to PDF. The document include
 
 #### Compiling to PDF
 
-To compile the LaTeX document to PDF on your system:
+**IMPORTANT: If you get "UTF-8.def not found" error, see LATEX_TROUBLESHOOTING.md**
 
-**Linux/Mac:**
+**Option 1: Use Simplified LaTeX (No Dependencies)**
+```bash
+cd docs
+pdflatex BERT_Architecture_Simple.tex
+```
+
+**Option 2: Use Original Full-Featured Version**
 ```bash
 cd docs
 pdflatex BERT_Architecture.tex
-# Or with full features:
-pdflatex -interaction=nonstopmode BERT_Architecture.tex
 ```
 
-**Requirements:**
+**Installation (if needed):**
 ```bash
 # Ubuntu/Debian
 sudo apt-get install texlive-latex-base texlive-fonts-recommended texlive-latex-extra
@@ -55,6 +68,12 @@ sudo apt-get install texlive-latex-base texlive-fonts-recommended texlive-latex-
 # macOS (with Homebrew)
 brew install basictex
 ```
+
+**Option 3: Use Overleaf Online (No Installation)**
+1. Visit https://www.overleaf.com/
+2. Create → "Upload Project"
+3. Upload `docs/BERT_Architecture.tex`
+4. Automatic PDF generation
 
 **Output:**
 The compilation generates:
