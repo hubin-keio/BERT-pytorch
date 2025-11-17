@@ -8,10 +8,12 @@
 [![PyPI - Status](https://img.shields.io/pypi/status/bert-pytorch.svg)](https://pypi.org/project/bert_pytorch/)
 [![Documentation Status](https://readthedocs.org/projects/bert-pytorch/badge/?version=latest)](https://bert-pytorch.readthedocs.io/en/latest/?badge=latest)
 
-Pytorch implementation of Google AI's 2018 BERT, with simple annotation
+PyTorch implementation of Google AI's 2018 BERT, optimized for protein language modeling with PyTorch Lightning and TensorBoard support.
 
-> BERT 2018 BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
-> Paper URL : https://arxiv.org/abs/1810.04805
+> **BERT**: Pre-training of Deep Bidirectional Transformers for Language Understanding
+> Paper URL: https://arxiv.org/abs/1810.04805
+
+**Latest Release**: November 2025 - Enhanced with PyTorch Lightning, TensorBoard, type hints, and comprehensive utilities
 
 
 ## Introduction
@@ -32,13 +34,33 @@ Some of these codes are based on [The Annotated Transformer](http://nlp.seas.har
 Currently this project is working on progress. And the code is not verified yet.
 
 ## Installation
+```bash
+pip install -e .
+# or
+pip install -r requirements.txt
 ```
-pip install bert-pytorch
-```
+
+### Requirements
+- PyTorch >= 1.9.0
+- PyTorch Lightning >= 1.5.0
+- TensorBoard >= 2.7.0
+- NumPy >= 1.19.0
+- tqdm >= 4.60.0
+- matplotlib >= 3.3.0
+
+## Key Features
+
+### ✨ New in November 2025 Release
+- **PyTorch Lightning Integration**: Simplified training with automatic distributed support
+- **TensorBoard Logging**: Real-time monitoring of training metrics per epoch
+- **Type Hints**: Full type annotations for better IDE support and error detection
+- **Input Validation**: Automatic parameter checking to prevent silent failures
+- **Reproducibility**: Seed management for deterministic training
+- **Visualization Tools**: Matplotlib-based plotting functions for analysis
+- **Comprehensive Logging**: Structured logging throughout training pipeline
+- **Early Stopping & Checkpointing**: Automatic model management and overfitting prevention
 
 ## Quickstart
-
-**NOTICE : Your corpus should be prepared with two sentences in one line with tab(\t) separator**
 
 ### 0. Prepare your corpus
 ```
@@ -59,8 +81,181 @@ bert-vocab -c data/corpus.small -o data/vocab.small
 ```
 
 ### 2. Train your own BERT model
-```shell
-bert -c data/corpus.small -v data/vocab.small -o output/bert.model
+```bash
+bert -c data/corpus.small -v data/vocab.small -o output/bert_training \
+  --hidden 256 \
+  --layers 8 \
+  --attn_heads 8 \
+  --epochs 20 \
+  --batch_size 64 \
+  --seed 42 \
+  --patience 5
+```
+
+### 3. Monitor training with TensorBoard
+```bash
+tensorboard --logdir output/bert_training/logs
+```
+
+Then open http://localhost:6006 in your browser.
+
+## Advanced Training Usage
+
+### Full Training Example with All Options
+```bash
+bert \
+  --train_dataset data/corpus.train \
+  --test_dataset data/corpus.test \
+  --vocab_path data/vocab.pkl \
+  --output_path output/bert_model \
+  --hidden 384 \
+  --layers 12 \
+  --attn_heads 12 \
+  --seq_len 512 \
+  --dropout 0.1 \
+  --batch_size 32 \
+  --epochs 100 \
+  --num_workers 8 \
+  --lr 0.0001 \
+  --warmup_steps 10000 \
+  --with_cuda true \
+  --seed 42 \
+  --patience 5
+```
+
+### Command-Line Arguments
+
+#### Dataset Arguments
+- `-c, --train_dataset` (required): Path to training dataset
+- `-t, --test_dataset` (optional): Path to test/validation dataset
+- `-v, --vocab_path` (required): Path to vocabulary file
+- `-o, --output_path` (required): Output directory for checkpoints and logs
+
+#### Model Architecture
+- `--hidden` (default: 256): Hidden size of transformer
+- `--layers` (default: 8): Number of transformer layers
+- `--attn_heads` (default: 8): Number of attention heads
+- `--seq_len` (default: 20): Maximum sequence length (protein sequences can be up to 2048)
+- `--dropout` (default: 0.1): Dropout rate
+
+#### Training Configuration
+- `-b, --batch_size` (default: 64): Batch size
+- `-e, --epochs` (default: 10): Number of epochs
+- `-w, --num_workers` (default: 5): DataLoader workers
+- `--lr` (default: 0.001): Learning rate
+- `--warmup_steps` (default: 10000): LR warmup steps
+- `--adam_weight_decay` (default: 0.01): Weight decay
+- `--patience` (default: 5): Early stopping patience
+
+#### Utility Options
+- `--with_cuda` (default: true): Use CUDA if available
+- `--cuda_devices`: Specific GPU IDs to use
+- `--seed` (default: 42): Random seed for reproducibility
+- `--log_freq` (default: 10): Logging frequency in batches
+- `--on_memory` (default: true): Load dataset into memory
+
+## Using the Utilities
+
+### Reproducibility with Seed Management
+```python
+from bert_pytorch.utils import set_seed
+
+# Set seed for reproducible training
+set_seed(42)
+# This sets seeds for Python, NumPy, PyTorch, and CUDA
+```
+
+### Logging
+```python
+from bert_pytorch.utils import get_logger
+
+logger = get_logger(__name__)
+logger.info("Training started")
+logger.warning("This is a warning")
+logger.error("An error occurred")
+```
+
+### Visualization
+```python
+from bert_pytorch.utils.visualization import (
+    plot_training_curves,
+    plot_loss_components,
+    plot_metrics_summary
+)
+
+# Plot training curves
+plot_training_curves(
+    train_losses=[0.5, 0.4, 0.3],
+    val_losses=[0.6, 0.5, 0.4],
+    train_accs=[80, 85, 88],
+    val_accs=[75, 80, 83],
+    output_path="results/training_curves.png",
+    title="Training Progress"
+)
+
+# Plot loss components (MLM vs NSP)
+plot_loss_components(
+    mlm_losses=[0.3, 0.25, 0.2],
+    nsp_losses=[0.2, 0.15, 0.1],
+    total_losses=[0.5, 0.4, 0.3],
+    output_path="results/loss_components.png"
+)
+
+# Plot multiple metrics
+metrics = {
+    "MLM Loss": [0.3, 0.25, 0.2],
+    "NSP Loss": [0.2, 0.15, 0.1],
+    "Accuracy": [80, 85, 88]
+}
+plot_metrics_summary(metrics, output_path="results/metrics.png")
+```
+
+## Python API Usage
+
+### Loading a Pre-trained Model
+```python
+import torch
+from bert_pytorch import BERT
+from bert_pytorch.model import BERTLM
+
+# Load vocabulary
+vocab = WordVocab.load_vocab('vocab.pkl')
+
+# Initialize model
+bert = BERT(vocab_size=len(vocab), hidden=256, n_layers=8, attn_heads=8)
+lm = BERTLM(bert, vocab_size=len(vocab))
+
+# Load weights
+state_dict = torch.load('bert_final.pth')
+bert.load_state_dict(state_dict)
+
+# Inference
+bert.eval()
+with torch.no_grad():
+    input_ids = torch.tensor([[1, 2, 3, 4, 5]])
+    segment_labels = torch.tensor([[1, 1, 1, 2, 2]])
+    output = bert(input_ids, segment_labels)
+    # output shape: [batch_size, seq_len, hidden_size]
+```
+
+### Using the Lightning Module
+```python
+from bert_pytorch.trainer import BERTLightningModule
+import pytorch_lightning as pl
+
+# Create module
+module = BERTLightningModule(
+    bert=bert,
+    vocab_size=len(vocab),
+    lr=1e-4,
+    warmup_steps=10000
+)
+
+# Create trainer
+trainer = pl.Trainer(max_epochs=20, gpus=1)
+
+# Train
+trainer.fit(module, train_dataloaders, val_dataloaders)
 ```
 
 ## Language Model Pre-training
@@ -108,13 +303,80 @@ not directly captured by language modeling
 2. Randomly 50% of next sentence, gonna be unrelated sentence.
 
 
-## Author
+## Troubleshooting
+
+### CUDA Out of Memory
+- Reduce batch size: `--batch_size 16`
+- Reduce hidden size: `--hidden 128`
+- Reduce sequence length: `--seq_len 256`
+- Enable gradient checkpointing (for advanced users)
+
+### Training is Slow
+- Increase number of workers: `--num_workers 8`
+- Use multiple GPUs: `--cuda_devices 0 1 2 3`
+- Reduce logging frequency: `--log_freq 50`
+
+### Model Not Converging
+- Reduce learning rate: `--lr 1e-5`
+- Increase warmup steps: `--warmup_steps 50000`
+- Check corpus quality and format (tab-separated sentences)
+- Try different random seed: `--seed 123`
+
+### TensorBoard Not Showing Data
+- Ensure training completed at least one epoch
+- Check logs directory: `output/bert_training/logs`
+- Restart TensorBoard: `tensorboard --logdir output/bert_training/logs`
+- Clear browser cache if using http://localhost:6006
+
+## FAQ
+
+**Q: How do I handle protein sequences longer than default sequence length?**
+A: Set `--seq_len 512` or higher (up to 2048). Consider your GPU memory accordingly.
+
+**Q: Can I use this for other languages besides protein sequences?**
+A: Yes! This is a general BERT implementation suitable for any tokenized text. Prepare corpus in the same format.
+
+**Q: How do I resume training from a checkpoint?**
+A: Load the checkpoint via `torch.load()` and pass to the model before calling `trainer.fit()`.
+
+**Q: What's the recommended batch size?**
+A: Start with 64. If OOM errors occur, reduce to 32 or 16. Larger batches (128+) may improve convergence but require more GPU memory.
+
+**Q: How often should I validate?**
+A: If you have a test set, validation happens every epoch. Otherwise, early stopping monitors training loss.
+
+**Q: Can I use multiple GPUs?**
+A: Yes, if multiple GPUs are available, specify: `--cuda_devices 0 1 2 3`
+
+**Q: How do I extract features from a trained model?**
+A: Use the BERT encoder output (hidden states) after loading the pre-trained weights:
+```python
+bert.eval()
+with torch.no_grad():
+    output = bert(input_ids, segment_labels)  # [batch, seq_len, hidden]
+```
+
+## Publications & Projects Using BERT-pytorch
+
+If you use this implementation in your research, please cite the original BERT paper and this repository.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+## Original Author
 Junseong Kim, Scatter Lab (codertimo@gmail.com / junseong.kim@scatterlab.co.kr)
+
+## Contributors (November 2025)
+- PyTorch Lightning integration
+- TensorBoard support
+- Type hints and validation
+- Comprehensive utilities and documentation
 
 ## License
 
-This project following Apache 2.0 License as written in LICENSE file
+This project follows Apache 2.0 License as written in LICENSE file
 
 Copyright 2018 Junseong Kim, Scatter Lab, respective BERT contributors
 
-Copyright (c) 2018 Alexander Rush : [The Annotated Trasnformer](https://github.com/harvardnlp/annotated-transformer)
+Copyright (c) 2018 Alexander Rush: [The Annotated Transformer](https://github.com/harvardnlp/annotated-transformer)
